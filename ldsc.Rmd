@@ -1,0 +1,22 @@
+---
+title: "Ldsc"
+output: html_document
+---
+
+## Normal and Chi-squared models
+
+The square of a standard normal variable follows $\chi^2$ with 1 df. 
+So, the probability of seeing another $z$ that is more extreme than the given $z$ under the null hypothesis of a standard normal equals to the probability of seeing another $z^2$ that is more extrem of the given $z^2$ under the null hypothesis of a $\chi^2$. 
+
+```{r}
+
+z = rnorm(10, 0, 1)
+z.p = 2 * (1 - pnorm(abs(z)))
+
+z.c = 1 - pchisq(z^2, df = 1)
+
+plot(z.p, z.c)
+```
+
+## Brendan's way to estiamte heritability and genetic correlation using LD information
+

@@ -1,0 +1,11 @@
+---
+title: "Mendelian Randomization Tryout"
+output: html_document
+---
+
+## MR: to make causal inferences using observational epidemiological data
+
+```{r}
+summary(cars)
+```
+
