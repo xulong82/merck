@@ -1,0 +1,74 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Summary
+
+Hierarchical or multilevel modeling is a generalization of regression modeling.
+
+Rationale of multilevel modeling comes from the dependencies of observations within groups.
+
+In cases where there are well-defined hierarchical structures in the data, there are also multilevel dependencies between samples, and hierarchical or mixed effects model should be preferred.
+If we opt to pool all samples together and fit a fixed effect model in such cases, we ignore the group information, and won't be able to make group-specific predictions.
+If we opt to estimate group-specific effects by fitting a fixed effect model, we are risky of overfitting in groups of few samples, and consequences poor out-of-sample predictions. 
+
+Additional assumption of the random term is the modeling of the group-level effects, such as to fit the group-level effects using a Gaussian model, which might not hold.
+
+In random effect model, we still estimate group-specific parameters, but these parameters are further modeled by hyperparameters.
+As a result, the group-specific parameter estimand are results of two sources: 1, data within the group; 2, data of other groups also play a role. 
+
+# Case study using radon contamination data
+
+```{r}
+library(rstan)
+load("~/GitHub/stats/mixed/radon.rdt")
+attach(radon)
+
+hist(log.radon)
+table(basement)
+
+unique(uranium[county == 1])
+unique(uranium[county == 2])
+```
+
+### complete pool
+
+```{r}
+pool = stan_model("~/GitHub/stats/mixed/pool.stan")
+
+x <- cbind(1, radon$basement)
+data <- list(N = dim(x)[1], D = dim(x)[2], x = x, y = radon$log.radon)
+
+fit.pool <- sampling(pool, data = data)
+w <- extract(fit.pool)$w
+
+plot(basement, log.radon); lines(basement, x %*% apply(w, 2, mean), col='red')
+```
+
+### mixed effect model (partial pooling)
+
+```{r}
+mixed = stan_model("~/GitHub/stats/mixed/mixed.stan")
+
+data$C = length(unique(county))
+data$l = county
+fit.mixed <- sampling(mixed, data = data)
+w <- extract(fit.pool)$w
+
+```
+
+> how to use HLM results to make predictions on a new group
+> likely expected mean of the group-specific parameters
+
+> what is the expected mean of the group-specific parameters?
+> it deviates a bit, and is always between the overall expected mean and the within group expected mean. 
+
+```{r}
+print(fit.mixed, pars = "mu_w")
+print(fit.mixed, pars = c("w[2,1]", "w[2,2]"))
+
+radon.1 =  radon[radon$county == 2, ]
+summary(lm(log.radon ~ basement, data = radon.1))
+
+```

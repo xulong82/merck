@@ -1,0 +1,25 @@
+# Meta analysis as a method to pool together evidences of previous studies.
+
+# Fixed-effect meta-analysis
+# Assumption: there is a fixed underlying effect, which does not change across the studies
+
+1. $\mu_i$ and $\sigma_i$ be the effect and the standard error of the i-th study
+2. $w_i$ as weight assigned to this study is $\frac{1}{v_i}$, where $v_i$ is the varaince ($\sigma^2$)
+3. the weighted effect $\hat{\mu}$ equals $\frac{\sum_{i=1}^{k}{w_i \mu_i}}{\sum_{i=1}^{k}w_i}$
+4. the weighted variance $\hat{v}$ equals $\frac{1}{\sum_{i=1}^{k}w_i}$
+5. the weighted effect is the combined effect, with standard error $\sqrt{\hat{v}}$
+
+# Random-effect meta-analysis
+# Assumption: there is no fixed underlying effect, instead effects are study-specific
+
+There are two levels of sampling, and two source of error: 
+1, the true effect sizes θ are distributed about $\mu$ of each study with a variance $\tau^2$, which reflects the actual distribution of the true effects about their mean; 
+2, the observed effect $\mu_i$ for the i-th study is distributed about that $\mu_i$ with a variance $\sigma_i^2$, which depends primarily on the sample size for that study. 
+
+Random effects analysis decomposes variance into the two parts, within-studies $\sigma^2$ and between-studies $\tau^2$, and
+then use both parts when assigning the weights. 
+
+The formulas are quite tedious, detailed in $meta.pdf$.
+
+# Fixed-effect model weight large studies more than random-effect model 
+ 

@@ -1,0 +1,78 @@
+---
+title: "Use GWAS Summary Statistics"
+output: html_document
+---
+
+## LMM model
+
+A fixed effect polygenic effect model: $y \sim N(\mu + X\beta, \sigma_r^2 I)$, where:
+y is a N X 1 vector of phenotype, X is a N X M matrix of causal variants, $\beta$ is a M X 1 vector of the effects of each variant, $\sigma^2$ is the residual variance.
+
+We often do not know all the causal variants, which leads to random effect model. 
+Key assumption of random effect model is assuming the elements of $\beta$ follow i.i.d. of $N(0, \sigma_g^2/M)$.
+
+The model has become a two-level hierarchical model. This model is useful in heritability estimation, sample relatedness correction, et al.
+
+## LD matrix
+
+Let V be the M X M LD matrix of the M variants, $V = X^TX / (N-1)$
+
+```{r}
+x = rbinom(1e3, 2, .5)
+x = matrix(x, nrow = 10) # 10 X 100 matrix
+xs = apply(x, 2, scale)
+
+v = t(xs) %*% xs / (10 - 1)
+cor(xs[, 1:2])
+```
+
+## Least Squared Estimation
+
+$$\hat{\beta} = (X^TX)^{-1}X^Ty$$
+
+$$var(\hat{\beta}) = var((X^TX)^{-1}X^Ty) = var(y) (X^TX)^{-1}$$
+
+## Standardized effect size
+
+$$ Z = \frac{X^T Y}{\sqrt{N}}$$
+```{r}
+y = matrix(rnorm(1e3, 0, 1), nrow = 1e3)
+x = matrix(rbinom(1e4, 2, .5), nrow = 1e3)
+xs = apply(x, 2, scale)
+
+p1 = t(xs) %*% y / sqrt(1e3)
+
+p2 = apply(xs, 2, function(x1) {
+  f1 = summary(lm(y ~ x1))
+  f1$coefficients["x1", "Estimate"] / f1$coefficients["x1", "Std. Error"]
+})
+
+solve(t(xs) %*% xs) %*% t(xs) %*% y
+
+plot(p1, p2); abline(0, 1)
+```
+
+## Meta-analysis using fixed effect model
+
+```{r}
+```
+
+## Meta-analysis using random effect model
+
+```{r}
+```
+
+## Conditional analysis using GWAS summary statistics and LD of a reference population
+
+```{r}
+```
+
+## Imputation analysis using GWAS summary statistics and LD of a reference population
+
+```{r}
+```
+
+## Transcriptome-wide association studies: association between expression of each gene with a trait
+
+```{r}
+```
