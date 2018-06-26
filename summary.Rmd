@@ -22,6 +22,9 @@ x = rbinom(1e3, 2, .5)
 x = matrix(x, nrow = 10) # 10 X 100 matrix
 xs = apply(x, 2, scale)
 
+x %*% t(x)
+xs %*% t(xs)
+
 v = t(xs) %*% xs / (10 - 1)
 cor(xs[, 1:2])
 ```
@@ -52,6 +55,22 @@ solve(t(xs) %*% xs) %*% t(xs) %*% y
 plot(p1, p2); abline(0, 1)
 ```
 
+## Genomic inflation factor 
+
+y ~ $\lambda_{GC}$ * x, where x is the true $\chi^2$, y is the estimated $\chi^2$ of the association model
+
+$\lambda_{GC}$ can be approximated as $median(y) / 0.456$
+
+```{r}
+S <- read.table(input,header=F)
+
+if (stat_type == "Z") z = S[,1]
+if (stat_type == "CHISQ") z = sqrt(S[,1])
+if (stat_type == "PVAL") z = qnorm(S[,1]/2)
+
+lambda = round(median(z^2)/.456,3)
+```
+
 ## Meta-analysis using fixed effect model
 
 ```{r}
@@ -76,3 +95,24 @@ plot(p1, p2); abline(0, 1)
 
 ```{r}
 ```
+
+## Burden test
+
+$T_{burden} = w^T z$, where $w$ is a weight vector, $z$ is the effect size vector. 
+Null distribution of $T_{burden}$ follows: $N(0, w^TVw)$.
+
+```{r}
+p = seq(1e-2, .99, 1e-2)
+y = 1 / sqrt(p * (1-p))
+plot(p, y)
+```
+
+## Overdispersion test: weighted sums of squared single-variant test statistics
+
+```{r}
+z = matrix(c(1:3), nrow = 3)
+w = c(0.1, 2, 3) * diag(3)
+t(z) %*% w %*% z
+1 * .1 + 4 * 2 + 9 * 3
+```
+

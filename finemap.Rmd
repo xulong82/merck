@@ -1,0 +1,47 @@
+# The statistical model of FINEMAP
+
+## genotype
+
+Make 5 variants in 3 LD blocks
+
+## phenotype
+
+$$y = \sum_{c \in C}\beta_c*g_c + N(\epsilon|0, \sigma^2I)$$
+
+$$\hat{\lambda} = n^{-1/2} * \sigma * R^{-1} * \hat{z}$$
+
+```{r}
+g1 = rbinom(1e2, 2, .5)
+noise = which(rbinom(1e2, 1, .1) == 1)
+g2 = g1; g2[noise] = 2 - g2[noise]
+
+g3 = rbinom(1e2, 2, .2)
+noise = which(rbinom(1e2, 1, .1) == 1)
+g4 = g3; g4[noise] = 2 - g4[noise]
+
+g5 = rbinom(1e2, 2, .3)
+
+g = cbind(g1, g2, g3, g4, g5)
+
+library(lattice)
+levelplot(cor(g))
+
+gs = apply(g, 2, scale)
+gc = gs[, c(2, 4)]
+bc = c(1, 2)
+
+y = gc %*% bc + rnorm(1e2, 0, 3)
+ys = scale(y)
+
+f1 = apply(gs, 2, function(g1) summary(lm(ys ~ g1)))
+f1s = do.call(rbind, lapply(f1, function(x) coef(x)["g1", ]))
+zh = f1s[, "t value"]
+
+zh %*% solve(cor(gs)) / sqrt(1e2)
+
+f2 = lm(ys ~ gs)
+f2s = summary(f2)
+lh = f2s$coefficients[-1, "t value"]
+
+plot(zh, lh)
+```

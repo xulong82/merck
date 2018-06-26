@@ -3,6 +3,11 @@ title: "Ldsc"
 output: html_document
 ---
 
+## Key ideas
+
+1. Assuming a uniform prior, you see SNPs with more LD friends showing more associations
+2. Under pure genetic drift, we expect LD to have no relationship to differences in allele frequency between populations
+
 ## Normal and Chi-squared models
 
 The square of a standard normal variable follows $\chi^2$ with 1 df. 
@@ -18,5 +23,63 @@ z.c = 1 - pchisq(z^2, df = 1)
 plot(z.p, z.c)
 ```
 
-## Brendan's way to estiamte heritability and genetic correlation using LD information
+## The math
+
+## Raymond Walter's Youtube video
+
+True model: $y_i = \sum_{j = 1}^{J} \beta_j * x_{ij} + \epsilon_i$
+
+? Standardize both $y$ and $x$, that implicitly assume relationship between effect size and minor allele frequency
+? How to understand this?
+
+Marginal effect of GWAS is: $\hat\beta_j^{GWAS} = s_j + \sum_{k = 1}^{J} \beta_k * r_{j, k} + e_j$
+
+$s_j$ is the bias from confounding factors.
+
+OLS: $e_i \sim N(0, \frac{\epsilon_e^2}{N})$, where $\epsilon_e^2 \approx 1$
+
+Fact: $var(x) = E(x^2)$
+
+```{r}
+g = rbinom(1e3, 1, .3)
+g = matrix(g, nrow = 1e2)
+
+var = apply(g, 2, var)
+
+maf = colMeans(g)
+maf * (1-maf)
+plot(var, maf * (1-maf)); abline(a = 0, b = 1)
+
+g2 = apply(g, 2, scale)
+var2 = apply(g2, 2, var)
+
+y = 2 * g[, 1] + rnorm(1e2, 0, 3)
+
+summary(lm(y ~ g))
+summary(lm(scale(y) ~ g2))
+
+fit = apply(g, 2, function(x) summary(lm(y ~ x)))
+fit = lapply(fit, function(x) x$coefficient)
+
+fit2 = apply(g2, 2, function(x) summary(lm(scale(y) ~ x)))
+fit2 = lapply(fit2, function(x) x$coefficient)
+
+fit.t = sapply(fit, function(x) x["x", "t value"])
+fit2.t = sapply(fit2, function(x) x["x", "t value"])
+```
+
+## by scaling the x variable, the z-scores do not change
+## by scaling the x variable, we are bring the effect into the same distribution, in that they all have the same variance
+
+## by normalizing the variant, you see constant variance of beta, which is used and important in deriving the formula
+
+```{r}
+x = c(1, 2, 8, 5, 8, 10, 3, 9, 1, 3)
+y = x + rnorm(10, 0, 3)
+
+summary(lm(y ~ x))
+summary(lm(scale(y) ~ scale(x)))
+summary(lm(y ~ scale(x)))
+summary(lm(scale(y) ~ x))
+```
 

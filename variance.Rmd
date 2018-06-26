@@ -1,0 +1,97 @@
+## Variance components in regression models
+
+? how to quantify variance explained by a predictor?
+? and its relationship with estimated effect / standard error
+
+## Variance definition
+
+$$var(y) = E[y^2] - E[y]^2$$
+
+## Law of total expectation
+
+$$E[x] = E[E[x|y]]$$
+
+## Variance definition under conditional distribution framework
+
+$$E[y^2] - E[y]^2 = E[var(y|x)] + var(E[y|x]) $$
+
+## Homoschedastic 
+
+$var(y|x)$ does not depend on x, and is constant $\sigma^2$ across different values of x.
+
+$$E[var(y|x)] = E[\sigma^2] = \sigma^2$$
+$$var(y) = var(E[y|x]) + \sigma^2$$
+
+## R function var() compute sample variance, which is an estimate of the population variance
+
+Statistics uses random samples and test statistics to estimate population parameters, beause full population data is usually not available.
+The sample average is usually a good estimate for the population average, but turns out the sample variance is a biased estimate for the population variance.
+Sample variance tends to underestimate the population variance.
+To estimate population variance in practice, given a sample vector $s$, we use: $\frac{n}{n-1} * (E[s^2] - E[s]^2)$.
+However, this is an approximation, instead of a perfect correction.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+myvar = function(x) { mean(x^2) - mean(x)^2 }
+
+x = sample(c(0:1), size = 1e3, replace = T)
+y = x + rnorm(1e3, 0, 1)
+
+data = data.frame(x, y)
+ggplot(data, aes(x = as.factor(x), y = y)) + geom_violin() + geom_boxplot(width = 0.1) + coord_flip()
+
+myvar(y)
+
+myvar(y[x == 0])
+myvar(y[x == 1])
+
+(sigma = mean(myvar(y[x == 0]), myvar(y[x == 1])))
+
+mean(y[x == 0])
+mean(y[x == 1])
+
+(evar = myvar(c(mean(y[x == 0]), mean(y[x == 1]))))
+
+evar = rep(mean(y[x == 0]), times = 1e3)
+evar[x == 1] = mean(y[x == 1])
+
+myvar(evar)
+
+f = lm(y ~ x - 1)
+summary(f)
+sigma(f)
+
+var(y)
+var(predict(f))
+var(unique(predict(f)))
+
+var(predict(f)) + sigma(f)
+```
+
+## var(E[y|x]), explained variance, effect size, allele frequency
+
+$$\beta^2 * var(x)$$
+
+```{r}
+x = sample(c(0:1), size = 1e3, replace = T)
+y = 2 * x + rnorm(1e3, 0, 1)
+
+f = lm(y ~ x)
+summary(f)
+beta = coefficients(f)["x"]
+
+beta^2 * var(x)
+var(predict(f))
+
+var(y)
+sigma(f)
+sigma(f) + beta^2 * var(x)
+sigma(f) + var(predict(f))
+
+x1 = rbinom(1e3, 2, .3)
+var(x1)
+p = mean(x1) / 2
+2 * p * (1-p)
+```

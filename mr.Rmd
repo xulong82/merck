@@ -9,3 +9,41 @@ output: html_document
 summary(cars)
 ```
 
+## 2SLS (two-stage least squares)
+
+> Use instrumental variables to extract that variation in intermediate phenotype (exposure) 
+> that is independent of confounding variables, and use this part of variation to estimate the causal effect.
+
+```{r}
+z = rnorm(1e2, 0, 1) # iv
+u = rnorm(1e2, 0, 1) # confounding
+x = 3 * z + 3 * u + rnorm(1e2, 0, 3) # exposure
+y = 3 * x + 3 * u + rnorm(1e2, 0, 3) # outcome
+
+summary(lm(y ~ x))
+summary(lm(y ~ x + u))
+
+summary(lm(u ~ z))
+
+s1 = lm(x ~ z) # stage 1
+summary(s1) # effect prediction of z on x was inaccurate
+summary(lm(x ~ z + u))
+
+summary(lm(x ~ u))
+summary(lm(predict(s1) ~ u)) # no effect from u to the exposure
+
+predict(s1)
+plot(z, predict(s1))
+plot(x, predict(s1))
+
+summary(lm(y ~ x))
+summary(lm(y ~ predict(s1))) # stage 2
+summary(lm(y ~ x + z))
+
+(b1 = summary(lm(y ~ z)))
+(b2 = summary(lm(x ~ z)))
+
+b1$coefficients["z", "Estimate"] / b2$coefficients["z", "Estimate"] # this is consistent with the stage 2 estimation
+```
+
+## Mendelian randomization package
