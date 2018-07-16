@@ -3,15 +3,19 @@ title: "Mendelian Randomization Tryout"
 output: html_document
 ---
 
-## MR: to make causal inferences using observational epidemiological data
+## Math of MR by 2SLS (two-stage least squares)
 
-```{r}
-summary(cars)
-```
+$y$: phenotype; $x$: gene expression; $z$: genetic variant
 
-## 2SLS (two-stage least squares)
+$b_{xy}$: effect size of x on y (slope of y regressed on the genetic value of x)
+$b_{zx}$: effect of z on x
+$b_{zy}$: effect of z on y
 
-> Use instrumental variables to extract that variation in intermediate phenotype (exposure) 
+$\hat{b}_{xy} = \hat{b}_{zy} / \hat{b}_{zx}$
+
+In MR analysis, $b_{xy}$ is interpreted as the effect of $x$ on $y$ free of non-genetic confounders.
+
+> Use instrumental variables to extract variation in intermediate phenotype (exposure) 
 > that is independent of confounding variables, and use this part of variation to estimate the causal effect.
 
 ```{r}
@@ -37,13 +41,93 @@ plot(z, predict(s1))
 plot(x, predict(s1))
 
 summary(lm(y ~ x))
-summary(lm(y ~ predict(s1))) # stage 2
-summary(lm(y ~ x + z))
+s2 = lm(y ~ predict(s1)) # stage 2
+summary(s2)
 
 (b1 = summary(lm(y ~ z)))
 (b2 = summary(lm(x ~ z)))
 
-b1$coefficients["z", "Estimate"] / b2$coefficients["z", "Estimate"] # this is consistent with the stage 2 estimation
+(b3 = summary(lm(y ~ x)))
+
+# summary summary stats of lm(y ~ z) and lm(x ~ z) to calculate MR analysis results
+# below are consistent with estimations in 2SLS MR stage 2 
+
+b1$coefficients["z", "Estimate"] / b2$coefficients["z", "Estimate"] 
+b1$coefficients["z", "Std. Error"] / b2$coefficients["z", "Estimate"] # accurate and convenient way 
+var(y) * (1 - b1$r.squared) / var(x) / b2$r.squared / 1e2
 ```
 
-## Mendelian randomization package
+## MR statistical power
+
+Power of an MR analysis is proportional to: 
+
+1. the variance in outcome explained by the instrument
+2. the variance in exposure explained by the instrument
+3. sample size
+
+Human complex disease, both (1) and (2) are tiny, so (3) needs to be very large.
+However, phenotype, genotype, and gene expression measured on the same samples with a large sample size are rarely available.
+This leads to SMR: MR analysis using summary statistics (smr)
+
+## Summary data-based Mendelian randomization analysis: Mendelian randomization package
+
+```{r}
+library(MendelianRandomization)
+
+MRInputObject <- mr_input(bx = ldlc, bxse = ldlcse, by = chdlodds, byse = chdloddsse)
+MRInputObject.cor <- mr_input(bx = calcium, bxse = calciumse, by = fastgluc, byse = fastglucse, corr = calc.rho)
+```
+
+>> inverse-variance weighted method
+
+## MR results of individual variants 
+$\hat{b}_{xy} = \hat{b}_{zy} / \hat{b}_{zx}$
+$se(\hat{b}_{xy}) = se(\hat{b}_{zy}) / \hat{b}_{zx}$
+
+## Averaged MR results using the inverse-variance weighting method 
+$\hat{y} = \frac{\sum{y_i / \sigma_y^2}}{\sum{1/\sigma_i^2}}$
+$var(\hat{y}) = \frac{1}{\sum{1/\sigma_i^2}}$
+
+```{r}
+IVWObject <- mr_ivw(MRInputObject)
+IVWObject
+
+mydata <- data.frame(bx = ldlc, bxse = ldlcse, by = chdlodds, byse = chdloddsse)
+mydata$bxy = mydata$by / mydata$bx
+mydata$bxyse = mydata$byse / mydata$bx
+
+# fixed effect model
+sum(mydata$bxy * mydata$bxyse^{-2}) / sum(mydata$bxyse^{-2})
+1 / sum(mydata$bxyse^{-2})
+
+# random effect model
+```
+
+## Summary data-based Mendelian randomization analysis: SMR
+
+1. SMR is equivalent to MR analysis if genotype, gene expression, and phenotype dat are available from the same sample. 
+2. The power of SMR can be dramatically increased if $b_{zx}$ and $b_{zy}$ are estimated separately from two independent samples with very large sample size.
+3. MR and SMR analysis based on a single genetic variant is unable to distinguish between causality and pleiotropy.
+
+## SMR analysis using GWAS and eQTL results
+
+This analysis can be interpreted as a TWAS using summary data from GWAS and eQTL studies. 
+
+## Math: TWAS using SMR
+
+```{r}
+z = rbinom(1e3, 2, 0.3)
+p = mean(z) / 2
+var(z)
+2 * p * (1 - p)
+
+x = 2 * z + rnorm(1e3, 0, 3)
+(f1 = summary(lm(x ~ z)))
+
+f1.z = f1$coefficients["z", "t value"]
+
+(sz = 1 / sqrt( 2 * p * (1 - p) * (1e3 + f1.z^2)))
+f1$coefficients["z", "Std. Error"]
+```
+
+>> the above two quantities do not agree, additional assumptions under play, in supplementary note 2
