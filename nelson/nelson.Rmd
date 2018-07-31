@@ -1,0 +1,312 @@
+---
+title: "The support of human genetic evidence for approved drug indications"
+author: "Xulong Wang (emailofx@gmail.com)"
+output: html_document
+---
+
+I have 3 questions in using human genetics for medicine development:
+
+1. Historically, how human genetics have helped medicine development?
+2. Nowadays, what do we expect given the data and methodologies?
+3. And, how to do it?
+
+This paper by Nelson et al. addressed the first one.
+
+```{r, include = F}
+rm(list = ls())
+options(stringsAsFactors = F)
+
+library(dplyr)
+library(biomaRt)
+library(metafor)
+```
+
+## Pharmaprojects database was used for medicine development programs in different stages
+
+Note that the authors only included drugs that have known targets, which accounts for $\sim$ 35% of the total drugs across the various stages of the development.
+This would overestimate the contributions of gentics in this paper's analysis. However, this process comes with legistimate reasons. 
+
+```{r}
+ds13 <- read.csv("~/Git/merck/nelson/ng.3314-S13.txt", sep = "\t")
+head(ds13)
+
+table(ds13$Phase.Latest)
+
+unique(ds13$Gene) %>% length
+unique(ds13$MSH) %>% length
+```
+
+Total of 1824 target genes on 705 indications, and 19085 target-indication pairs.
+
+## GWASdb and OMIM database were used for genetic evidences of common and rare diseases.
+
+```{r}
+ds12 <- read.csv("~/Git/merck/nelson/ng.3314-S12.txt", sep = "\t")
+table(ds12$Source)
+
+omim = ds12 %>% filter(Source %in% c("OMIM", "Omim"))
+unique(omim$Gene) %>% length
+unique(omim$MSH) %>% length
+
+gwas = ds12 %>% filter(! Source %in% c("OMIM", "Omim"))
+unique(gwas$Gene) %>% length
+unique(gwas$MSH) %>% length
+```
+
+OMIM: 2069 genes, 2217 traits, and 3098 gene-trait pairs.
+GWASdb: 6040 genes, 372 traits, and 13554 gene-trait pairs.
+
+Trait versus gene ratio of the OMIM database (1.07) was much greater than that of GWASdb (0.06).
+This reflects the monogenic nature of the mendelian diseases, and the polygenic nature of the complex diseases.
+
+### What are the top genes and top traits in the OMIM database?
+
+```{r}
+omim.g = unique(omim$Gene)
+omim.t = unique(omim$MSH)
+
+g2t = lapply(omim.g, function(g) { omim$MSH[omim$Gene == g] })
+names(g2t) = omim.g
+g2t = g2t[order(sapply(g2t, length), decreasing = T)]
+g2t[1:10]
+
+t2g = lapply(omim.t, function(t) { omim$Gene[omim$MSH == t] })
+names(t2g) = omim.t
+t2g = t2g[order(sapply(t2g, length), decreasing = T)]
+t2g[1:10]
+```
+
+### What are the top genes and top traits in the GWASdb database?
+
+```{r}
+gwas.g = unique(gwas$Gene)
+gwas.t = unique(gwas$MSH)
+
+g2t = lapply(gwas.g, function(g) { gwas$MSH[gwas$Gene == g] })
+names(g2t) = gwas.g
+g2t = g2t[order(sapply(g2t, length), decreasing = T)]
+g2t[1:10]
+
+t2g = lapply(gwas.t, function(t) { gwas$Gene[gwas$MSH == t] })
+names(t2g) = gwas.t
+t2g = t2g[order(sapply(t2g, length), decreasing = T)]
+t2g[1:10]
+```
+
+## If only considering approved drugs, the target genes were enriched among the GWASdb and OMIM genes 
+
+```{r}
+table(ds13$Phase.Latest)
+table(ds13$lApprovedUS.EU)
+
+apr = ds13[ds13$Phase.Latest %in% c("Launched", "Registered", "Withdrawn") | ds13$lApprovedUS.EU == TRUE, ]
+
+aprGene = unique(apr$Gene)
+length(aprGene)
+
+aprMsh = unique(apr$MSH)
+length(aprMsh)
+
+(res1 = table(aprGene %in% omim.g))
+res1["TRUE"] / sum(res1)
+
+(res2 = table(aprGene %in% gwas.g))
+res2["TRUE"] / sum(res2)
+
+(res3 = table(aprGene %in% c(omim.g, gwas.g)))
+res3["TRUE"] / sum(res3)
+```
+
+1. 387 genes are already successful targets of 429 disease indications.
+2. 40% of the approved targets have significant OMIM results.
+3. 44% of the approved targets have significant GWAS results.
+4. 63% of the approved targets have significant results in either GWASdb or OMIM.
+
+### Figure 2: Enrichment of target genes for drugs approved in the US or EU.
+
+```{r}
+ens <- useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+ens <- getBM(attributes = c("hgnc_symbol", "gene_biotype"), mart = ens) 
+table(ens$gene_biotype)
+pcgs <- ens$hgnc_symbol[ens$gene_biotype == "protein_coding"] # protein-coding genes
+                 
+fig2 = data.frame(pcgs)
+fig2$approval = as.numeric(fig2$pcgs %in% approval.g)
+fig2$omim = as.numeric(fig2$pcgs %in% omim.g)
+fig2$gwas = as.numeric(fig2$pcgs %in% gwas.g)
+
+table(fig2[c("approval", "omim")])
+table(fig2[c("approval", "gwas")])
+
+(fig2.f1 = glm(approval ~ omim, data = fig2, family = binomial)) %>% summary
+(fig2.f2 = glm(approval ~ gwas, data = fig2, family = binomial)) %>% summary
+
+fig2.g = lapply(list(fig2.f1, fig2.f2), function(ff) exp(cbind("odds ratio" = coef(ff), confint.default(ff, level = 0.95))))
+fig2.g = do.call(rbind, fig2.g)
+fig2.g = fig2.g[! grepl("Intercept", rownames(fig2.g)), ] %>% as.data.frame
+fig2.g = log(fig2.g)
+
+forest(fig2.g$"odds ratio", ci.lb = fig2.g$"2.5 %", ci.ub = fig2.g$"97.5 %", slab = rownames(fig2.g), refline = 0, at = log(c(1, 2, 3, 5, 10)), atransf = exp)
+```
+
+So, a large proportion of approved drug targets (63%) have significant GWAS or OMIM results.
+But, these numbers do not consider alignments of target-indication and gene-trait pairs.
+For a given gene, the drug indication and associated traits usually do not match, which suggests drug-repurposing opportunities.
+Meanwhile, 37% of the approved targets do not have any significant GWAS or OMIM results.
+
+### What are these targets? What were the indications? Further, how were they found and wht were the MoA?
+
+```{r}
+aprNg <- apr %>% filter(! Gene %in% c(omim.g, gwas.g))
+table(aprNg$Gene) %>% sort(decreasing = T)
+table(aprNg$MSH.Top) %>% sort(decreasing = T)
+```
+
+The top approved targets w/o gentic evidences: NR3C1, PTGS1, PTGS2.
+Interestingly, nervous system diseases have the most approved drug targets that do not have genetics evidences.
+
+```{r}
+aprNgNs = aprNg %>% filter(MSH.Top == "Nervous System Diseases")
+
+table(aprNgNs$Gene) %>% sort(decreasing = T)
+table(aprNgNs$MSH) %>% sort(decreasing = T)
+```
+
+### Pain is the top indication, what are the targets?
+
+```{r}
+aprNgNs %>% filter(MSH == "pain")
+```
+
+### What are the durgs?
+
+> Email Matt to get the pharmaproject data that has drug names.
+
+## Analysis that considers alignments between target-diseses and gene-trait pairs
+
+In this analysis, the authors focused only on indications in the pharmaproject database that had at least 5 genetic assocation reports.
+The idea was to focus only on indications that were well studied by genetic assocation approaches.
+This would increase the chance to find matching gene-trait pairs in the genetic databases, therefore overestimate the contribution of genetics in the results.
+Taken together, the authors focused on drug development programs that (1) have known targets; (2) whose indications have reasonable genetic studies.
+
+### What are the indications that have reasonable genetic studies?
+
+The authors also relaxed the matching criteria of the MSH terms by a similarity cutoff 0.7. 
+This is reasonable, although it is expected that the results are sensitive to the cutoff value.
+
+```{r}
+ds14 <- read.csv("~/Git/merck/nelson/ng.3314-S14.txt", sep = "\t")
+indic = rownames(ds14)
+indic = gsub("\\\\", "", indic)
+
+table(aprMsh %in% indic)
+table(ds12$MSH %in% indic)
+
+# extended MSH for each approved indication
+aprMsh2 <- lapply(aprMsh, function(x) indic[as.matrix(ds14)[which(indic== x), ] > .7])  
+names(aprMsh2) <- aprMsh
+
+# number of genetic reports for each approved indication
+aprMsh3 <- sapply(aprMsh2, function(x) sum(ds12$MSH %in% x))
+
+(res4 = table(aprMsh3 > 0))
+res4["TRUE"] / sum(res4)
+(res5 = table(aprMsh3 > 4))
+res5["TRUE"] / sum(res5)
+```
+
+Total of 429 indications that have approved medicines.
+64% of these indications have at least 1 signficant genetic association results.
+48% of these indications have at least 5 signficant genetic association results.
+
+The authors focused on the disease indications that have at least 5 signficant association results (206).
+
+```{r}
+aprMshGen5 <-  aprMsh2[aprMsh3 > 4]
+aprGen5 <- apr %>% filter(MSH %in% names(aprMshGen5))
+
+aprPairs <- lapply(1:nrow(aprGen5), function(i) {
+  indic = aprGen5$MSH[i]
+  indic.ext = aprMshGen5[[indic]]
+  paste(indic.ext, aprGen5$Gene[i], sep = "-")
+})
+
+genPairs = paste(ds12$MSH, ds12$Gene, sep = "-")
+ansPairs = sapply(aprPairs, function(x) any(x %in% genPairs))
+
+(res6 = table(ansPairs))
+res6["TRUE"] / sum(res6)
+```
+
+Total of 1171 target-indication pairs under consideration.
+7.5% (88 out of 1171) of the target-indication pairs were supported by genetic associations.
+
+The authors reported this number as 8.2%, a discrepancy here.
+Anyhow, 8.2% or 7.5 % are both not big numbers, majority of approved drugs did not have human genetics supports, why?
+How those targets with no genetic supports were identified? 
+Are there patterns in the disease areas? 
+
+### Figure 3a
+
+```{r}
+```
+
+## Supports of human genetics are more pronounced in more advanced stages
+
+```{r}
+table(ds13$Phase.Latest)
+
+# Preclinical
+pre = ds13 %>% filter(Phase.Latest %in% c("Preclinical"))
+table(pre$MSH %in% names(aprMshGen5))
+
+preGen5 <- pre %>% filter(MSH %in% names(aprMshGen5))
+
+prePairs <- lapply(1:nrow(preGen5), function(i) {
+  indic = preGen5$MSH[i]
+  indic.ext = aprMshGen5[[indic]]
+  paste(indic.ext, preGen5$Gene[i], sep = "-")
+})
+
+ansPairs = sapply(prePairs, function(x) any(x %in% genPairs))
+
+(res7 = table(ansPairs))
+res7["TRUE"] / sum(res7)
+
+# Phase I 
+ph1 = ds13 %>% filter(Phase.Latest %in% c("Phase I Clinical Trial"))
+table(ph1$MSH %in% names(aprMshGen5))
+
+ph1Gen5 <- ph1 %>% filter(MSH %in% names(aprMshGen5))
+
+ph1Pairs <- lapply(1:nrow(ph1Gen5), function(i) {
+  indic = ph1Gen5$MSH[i]
+  indic.ext = aprMshGen5[[indic]]
+  paste(indic.ext, ph1Gen5$Gene[i], sep = "-")
+})
+
+ansPairs = sapply(ph1Pairs, function(x) any(x %in% genPairs))
+
+(res8 = table(ansPairs))
+res8["TRUE"] / sum(res8)
+```
+
+To choose indications of genetical evidences, the authors only chose from the approved indications.
+What are these indications? What are the indication that are left away? 
+Are there indications where genetic supports are actually less pronounced in more advanced stages?
+What about using all indications across the development stages that have genetic studies?
+
+## We had results on P(G | Phase), a different question is P(Phase | G)
+
+> What the expected drug development success rate would be for drug mechanisms with genetic support versus those without it.
+
+P(G | Success): 8.2%; P(!G | Success) : 91.8%
+
+P(Success | G) = P(G | Success) P(Success) / P(G)
+P(Success | !G) = P(!G | Success) P(Success) / P(!G)
+
+### Table 1
+
+P(Success | G) was 52% and P(Success | ! G) was 26%, which suggested programs with genetic evidences are 2 times more likely to be successful!
+
+### Derive P(G | Success) and P(Success | G) in indication-specific manner

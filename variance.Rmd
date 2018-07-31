@@ -95,3 +95,33 @@ var(x1)
 p = mean(x1) / 2
 2 * p * (1-p)
 ```
+
+## ANOVA
+
+$$SSE(Total) = SSE(Between) + SSE(Error)$$
+
+```{r}
+x1 = rnorm(1e2, 1, 1)
+x2 = rnorm(1e2, 2, 1)
+x3 = rnorm(1e2, 3, 1)
+
+y = c(x1, x2, x3)
+dd = data.frame(y = y, grp = rep(1:3, each = 1e2))
+
+library(ggplot2)
+library(dplyr)
+ggplot(dd, aes(x = y)) + geom_density(aes(group = as.factor(grp), col = as.factor(grp)))
+
+summary(aov(y ~ grp, data = dd))
+
+df1 = 2 - 1
+df2 = 3 * 1e2 - 2
+
+sst = sum((y - mean(y))^2)
+sst.g = (sum((mean(x1) - mean(y))^2) + sum((mean(x2) - mean(y))^2) + sum((mean(x3) - mean(y))^2)) * 1e2
+sst.e = sum((x1 - mean(x1))^2) + sum((x2 - mean(x2))^2) + sum((x3 - mean(x3))^2)
+
+sst.e + sst.g
+
+F = (sst.g / df1) / (sst.e / df2)
+```

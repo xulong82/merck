@@ -10,7 +10,7 @@ output: html_document
 
 ## P-values in genetic association studies
 
-1. A arbituary Pval cutoff to choose significant findings does not reflect statistical power of the given test, which is a function of maf and sample size. 
+1. A arbituary P-value cutoff to choose significant findings does not reflect statistical power of the given test, which is a function of maf and sample size. 
 2. Therefore, this practice punish studies of smaller sample size, likewise the rare variants.
 
 ## Bayes factor
@@ -31,6 +31,8 @@ $$WAFB = \sqrt{V / (V + W)} e^{(Wz^2 / 2 (V+W))}$$
 >> How to understand ABF depends on both p-value and power?
 >> How to understand when power is high, probability of null and alternative hypothesis are both high?
 
+P(y | H0) and P(y | H1) are technically marginal likelihoods of H0 model and H1 model.
+
 ## Wald statistics
 
 ```{r}
@@ -43,4 +45,46 @@ wald = coef["x", "Estimate"] / coef["x", "Std. Error"]
 wald = wald^2
 coef["x", "t value"] ^ 2
 1 - pchisq(wald, df = 1)
+```
+
+## Bayesian finemapping of association signals: use ABF to identify 95% credible set in finemapping
+
+This script was from Corneliu.
+
+## Get the Credible set for one locus with single signal
+
+```{r}
+fm <- read.table("/work/genetics/projects/Gen187_GeneticsDB/GWAS_Summary_stats/Cdiff/data/rs2516513_1Mb_SummaryStatistics.txt", header = T, fill = T)
+```
+
+## Calculate approximate bayes factor from effect size (beta) and standard error 
+## W is prior on variance of effect size
+## Method from Wakefield Gen Epi 2009
+## Suggested value for W is 0.04
+
+```{r}
+abf <- function(beta,se,W){
+  V = se**2
+  r = W/(V+W)
+  z2 = (beta/se)**2
+  abf = ((1-r)**0.5) * exp((z2/2)*r)
+  return(abf)
+}
+
+fm$abf <- abf(beta=fm$GT_beta, se=fm$GT_beta_se, W=0.04)
+```
+
+## Assumes one causal variant and equal priors on all variants
+## From Maller et al Nat Gen 2012
+
+```{r}
+fm$post = fm$abf/sum(fm$abf)
+```
+
+## Identify 95% credible set
+
+```{r}
+fm <- fm[order(fm$post, decreasing = T),]
+fm$cumpost <- cumsum(fm$post)
+credset <- fm[1:min(which(fm$cumpost>0.95)),]
 ```
