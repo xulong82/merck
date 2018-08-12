@@ -1,0 +1,34 @@
+---
+title: "Insights from GWAS: emerging landscape of mechanisms underlying complex trait disease"
+output: html_document
+---
+
+https://www.ncbi.nlm.nih.gov/pubmed/26110739
+
+# For a given disease, what proportion of the GWAS loci is explained by each of 5 mechanisms proposed in this paper?
+
+This study did not consider shared causal variants by colocalization analysis. 
+We assume the proportion holds.
+Also, we could run another analysis on this topic and publish a paper out of it.
+
+# Why proven drugs do not have genetic evidences, while the disease heritabilities are non-zero? 
+
+1. No mutations because of intolorence
+2. Compensation during development
+
+What Aaron thinks about this?
+
+# What are the situations where genetics are most powerful?
+
+For diseases that are clearly heritable, how much of the effective targets have genetic supports? 
+There is a miserable chance that effective targets are significantly enriched among the targets that do not have genetic supports. 
+Looks like Nelson's result clearly rejected this possibility and suggested the other way.
+
+This has something to do with the genetic by environment interaction model of disease progression.
+Generally, we want genes whose protein product when abolished, confer to a large clinical effects.
+But, genes of large effects on phenotype will not be detected by GWAS, likely because of selection constrains.
+GWAS on common variants usually find variants of small effects, and we hope that these variants also have small effects on protein functions.
+We further hope that these genes do have large effects on phenotype in the protein level, which could be shown by a engineered-complete LoF mutant or antibodies. 
+This assumption is critical, and this assumption could be approached by the human homozygous KO results from the ELGH dataset.
+
+# What are diseases that are absolutely not heritables?

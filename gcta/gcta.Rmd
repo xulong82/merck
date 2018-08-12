@@ -1,0 +1,116 @@
+## GCTA study note
+
+## REVISIT THE BASIS FOR A BETTER UNDERSTANDING
+
+> use stan to estimate the variance components in random effect model or some other methods
+> but what is exactly the random effect model and what is exactly the variance components mean?
+
+$y_j = \mu + x_{ij} a_i + e_j$
+
+1. $a_i$: effect of SNP $i$
+2. $x_{ij}$: genotype of SNP $i$ of individual $j$
+
+## This is hierarchical model reasoning
+
+## Variance-covariance matrix
+
+1. identity matrix: errors are independent but not idential
+2. non-zero off diagnal: errors are not independent and not identical
+
+```{r}
+data = c(74, 68, 75, 72, 79, 76, 71, 77, 74, 81, 75, 72, 77, 73, 79)
+grup = c(rep(1:5, 3))
+
+anova(aov(data ~ as.factor(grup)))
+```
+
+## use simulation to study why random effect model works in correcting relatedness
+## why $\sigma_g^2$ represents additive genetic variance?
+
+## it is customary to normalize variant genotype to N(0, 1)
+
+```{r}
+
+geno = rbinom(1e3, 2, 0.2)
+table(geno)
+f = sum(geno) / length(geno) / 2
+
+mean(geno)
+var(geno)
+s1 = scale(geno)
+mean(s1)
+var(s1)
+
+s2 = (geno - 2 * f) / sqrt(2 * f * (1-f))
+plot(s1, s2)
+
+head(s1)
+head(s2)
+```
+
+## matrix operation
+
+```{r}
+x = rbinom(1e3, 2, .5)
+x = matrix(x, nrow = 10)
+x = apply(x, 2, scale)
+na = apply(x, 2, function(y) sum(is.na(y)))
+x = x[, na == 0]
+
+x %*% t(x) / dim(x)[2]
+```
+
+> Variance-covariance structure of the phenotype, and the formula that divide it to genetic and residual components
+> Makes the link between genetic heritability and variance components, and the methodology of twin studies
+
+## MVN using MASS package
+
+```{r}
+library(MASS)
+
+Sigma <- matrix(c(10,3,3,2),2,2)
+Sigma
+
+xx = mvrnorm(n = 1000, rep(0, 2), Sigma)
+var(xx)
+
+var(mvrnorm(n = 1000, rep(0, 2), Sigma, empirical = TRUE))
+```
+
+## illustration
+
+```{r}
+pl = c("AC", "AD", "BC", "BD")
+sibs = replicate(1e3, sample(pl, 2, replace = T))
+sibs = as.data.frame(t(sibs))
+
+sibs = apply(sibs, 1, function(x) {
+  unlist(strsplit(x, ""))
+})
+
+sibs = as.data.frame(t(sibs))
+
+ibd = apply(sibs, 1, function(x) {
+  am = sample(x[1:2])
+  af = sample(x[3:4])
+  am == af
+})
+
+mean(ibd)
+
+sibs = apply(sibs, 1, function(x) {
+  sum(duplicated(x)) / 2
+})
+
+table(sibs)
+```
+
+## Plink
+
+```{r}
+Z0 = P(IBD = 0)
+Z1 = P(IBD = 1)
+Z2 = P(IBD = 2)
+
+Phi = Z2 + 0.5 * Z1
+```
