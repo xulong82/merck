@@ -1,0 +1,120 @@
+# Deep dive why mixed effect models work in estimating heritability
+
+## Mixed effect models are equivalent to Bayesian linear model 
+
+## simulate genotype and phenotypes 
+
+1. Make 5 variants in 3 LD blocks and 2 causal variants
+2. Phenotype follows: $$y = \sum_{c \in C}\beta_c*g_c + N(\epsilon|0, \sigma^2I)$$
+
+```{r}
+g1 = rbinom(1e3, 2, .5)
+noise = which(rbinom(1e3, 1, .1) == 1)
+g2 = g1; g2[noise] = 2 - g2[noise]
+
+g3 = rbinom(1e3, 2, .2)
+noise = which(rbinom(1e3, 1, .1) == 1)
+g4 = g3; g4[noise] = 2 - g4[noise]
+
+g5 = rbinom(1e3, 2, .3)
+
+g = cbind(g1, g2, g3, g4, g5)
+library(lattice); levelplot(cor(g))
+
+gc = g[, c(2, 4)] # causal variants
+fc = colMeans(gc) / 2
+bc = c(1, 2) # effect sizes
+
+e = rnorm(1e3, 0, 2)
+var(e)
+
+y = gc %*% bc + e
+
+var(y)
+
+2 * fc * (1-fc) # this is an approximation
+apply(gc, 2, var)
+
+sum(2 * fc * (1 - fc) * bc^2)
+sum(2 * fc * (1 - fc) * bc^2) + var(e)
+sum(apply(gc, 2, var) * bc^2)
+sum(apply(gc, 2, var) * bc^2) + var(e)
+
+summary(lm(y ~ g))
+summary(lm(y ~ g))$sigma
+
+(h = 1 - var(e) / var(y))
+```
+
+## Mixed effect model (Bayesian model) approach
+
+```{r}
+K = g %*% t(g) / 5
+
+library(rstan)
+model = stan_model("~/Git/mymsd/lmm.stan")
+
+data = list(N = 1e3, pheno = c(y), mymean = rep(0, 1e3), K = K)
+myfit = sampling(model, data = data, chains = 2, iter = 2e2) 
+```
+
+## K above was oversimplified and problematic, need more real geneomic data to make it work
+## it will be interesting to study the variance decomposition schemes in hierarchical modeling framework using examples in BDA
+
+# Models
+
+```{r}
+stan_multi_norm <- "
+
+data {
+int<lower=1> K; # outcomes
+vector[K] mu;
+cov_matrix[K] Sigma;
+vector[K] y;
+}
+
+parameters {
+vector[K] beta; 
+}
+
+model {
+beta ~ multi_normal(mu, Sigma);
+}
+
+"
+
+stan_multi_cholesky <- "
+
+data {
+int<lower=1> K; # outcomes
+vector[K] mu;
+cov_matrix[K] Sigma;
+vector[K] y;
+}
+
+transformed data {
+matrix[K, K] L;
+L <- cholesky_decompose(Sigma);
+}
+
+parameters {
+vector[K] beta; 
+}
+model {
+beta ~ multi_normal_cholesky(mu, L);
+}
+"
+
+load("adsp.rdt")
+mdata <- adsp$mdata
+Sigma <- adsp$kinship$autosome
+Sigma[Sigma < 0] <- 0
+
+stan_multi_norm <- stan_model(model_code = stan_multi_norm)
+stan_multi_cholesky <- stan_model(model_code = stan_multi_cholesky) 
+
+dat <- list(K = 576, mu = rep(0, 576), y = mdata$AD1, Sigma = Sigma) 
+
+fit_multi_norm <- sampling(stan_multi_norm, chain = 2, data = dat) # 450 sec each chain
+fit_multi_cholesky <- sampling(stan_multi_cholesky, data = dat) # 170 sec each chain 
+```
