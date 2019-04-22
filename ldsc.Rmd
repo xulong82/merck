@@ -3,10 +3,14 @@ title: "Ldsc"
 output: html_document
 ---
 
+## The problem
+
+How can we separate confounding from true polygenicity from GWAS results?
+
 ## Key ideas
 
-1. Assuming a uniform prior, you see SNPs with more LD friends showing more associations
-2. Under pure genetic drift, we expect LD to have no relationship to differences in allele frequency between populations
+1. Assuming a uniform prior, you see SNPs with more LD friends showing more associations (i.e. true causal variant goes by SNP or nucleotide)
+2. Under pure genetic drift, we expect LD to have no relationship to differences in allele frequency between populations (i.e. genetic drift goes by LD block)
 
 ## Normal and Chi-squared models
 
@@ -56,6 +60,7 @@ var2 = apply(g2, 2, var)
 y = 2 * g[, 1] + rnorm(1e2, 0, 3)
 
 summary(lm(y ~ g))
+summary(lm(y ~ g2))
 summary(lm(scale(y) ~ g2))
 
 fit = apply(g, 2, function(x) summary(lm(y ~ x)))
