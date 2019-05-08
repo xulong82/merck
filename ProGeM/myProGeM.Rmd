@@ -1,0 +1,39 @@
+---
+title: "Deep dive the ProGeM method"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(reticulate)
+```
+
+## Key conclusions
+
+1. Geonomic proximity is the most reliable indicator of true positive causal genes: 69% sensitivity and 95% specificity
+2. cis-eQTL data led to 3 false positive assignments for every 1 positive assignment: 25% specificity and 56% sensitivity
+
+ProGeM performances for 227 mQTL with high-confidence causal gene assignments
+
+## Sensitivity = TP / (TP + FN)
+## Specificity = TN / (TN + FP)
+
+                          Sensitivity      Specificity
+-----------------------   --------------   ----------------
+Bottom-up                 95%              38%
+Top-down                  85%              46%
+Bottom-up or top-down     98%              50%
+Bottom-up and top-down    82%              85%
+Nearest gene              69%              95%
+Sentinel cis-eQTL         56%              75%
+---------  ------------   --------------   ----------------
+
+> How did they use the cis-eQTL data?
+> Simply asking whether the sentinel variant was significant for the gene w/o considering whether the variant was the top in the eQTL signal?
+
+```{python}
+import pandas as pd
+mQTL = pd.read_excel ("/Users/xwang/Git/ProGeM/Stacey_Supplementary_Tables.xlsx", sheet_name = "Table S1", skiprows = 9)
+mQTL = mQTL.drop(mQTL.filter(regex = "Unnamed").columns, axis = 1)
+mQTL.dtypes
+```
