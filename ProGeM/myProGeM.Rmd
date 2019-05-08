@@ -15,8 +15,8 @@ library(reticulate)
 
 ProGeM performances for 227 mQTL with high-confidence causal gene assignments
 
-## Sensitivity = TP / (TP + FN)
-## Specificity = TN / (TN + FP)
+> Sensitivity = TP / (TP + FN)
+> Specificity = TN / (TN + FP)
 
                           Sensitivity      Specificity
 -----------------------   --------------   ----------------
@@ -33,7 +33,7 @@ Sentinel cis-eQTL         56%              75%
 
 ```{python}
 import pandas as pd
-mQTL = pd.read_excel ("/Users/xwang/Git/ProGeM/Stacey_Supplementary_Tables.xlsx", sheet_name = "Table S1", skiprows = 9)
+mQTL = pd.read_excel ("/Users/xwang/Git/merck/ProGeM/Stacey_Supplementary_Tables.xlsx", sheet_name = "Table S1", skiprows = 9)
 mQTL = mQTL.drop(mQTL.filter(regex = "Unnamed").columns, axis = 1)
 mQTL.dtypes
 ```
